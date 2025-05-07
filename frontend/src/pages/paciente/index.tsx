@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '../../components/Layout';
-import { Table } from '../../components/Table';
+import Table from '../../components/Table';
 import { pacienteService } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { FaPlus, FaSearch } from 'react-icons/fa';
@@ -9,57 +9,54 @@ import { useRouter } from 'next/router';
 interface Sexo {
   idSexo: number;
   nome: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 interface Paciente {
   idPaciente: number;
   nomeCompleto: string;
-  cpf: string;
-  numeroSUS: string;
+  CPF: string;
+  numSUS: string;
   dataNascimento: string;
   sexo: Sexo;
+  cidade: string;
+  uf: string;
 }
+
+interface Column<T> {
+  key: keyof T;
+  label: string;
+  render?: (value: any) => string;
+}
+
+const formatCPF = (cpf: string) => {
+  if (!cpf) return '-';
+  return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+};
+
+const formatDate = (date: string) => {
+  if (!date) return '-';
+  return new Date(date).toLocaleDateString('pt-BR');
+};
 
 export default function Pacientes() {
   const router = useRouter();
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [pacientesFiltrados, setPacientesFiltrados] = useState<Paciente[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortConfig, setSortConfig] = useState({ key: 'nomeCompleto', direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Paciente; direction: 'asc' | 'desc' }>({ 
+    key: 'nomeCompleto', 
+    direction: 'asc' 
+  });
   const [filtro, setFiltro] = useState('');
 
-  const columns = [
-    { key: 'nomeCompleto', label: 'Nome', sortable: true },
-    { 
-      key: 'cpf', 
-      label: 'CPF', 
-      sortable: true,
-      render: (value: string) => value ? value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '-'
-    },
-    { 
-      key: 'numeroSUS', 
-      label: 'Nº SUS', 
-      sortable: true,
-      render: (value: string) => value || '-'
-    },
-    { 
-      key: 'dataNascimento', 
-      label: 'Data Nascimento', 
-      sortable: true,
-      render: (value: string) => {
-        if (!value) return '-';
-        const date = new Date(value);
-        return date.toLocaleDateString('pt-BR');
-      }
-    },
-    { 
-      key: 'sexo', 
-      label: 'Sexo', 
-      sortable: true,
-      render: (value: Sexo) => value?.nome || '-'
-    },
+  const columns: Column<Paciente>[] = [
+    { key: 'nomeCompleto', label: 'Nome Completo' },
+    { key: 'CPF', label: 'CPF', render: (value) => formatCPF(value) },
+    { key: 'numSUS', label: 'Cartão SUS' },
+    { key: 'dataNascimento', label: 'Data de Nascimento', render: (value) => formatDate(value) },
+    { key: 'sexo', label: 'Sexo', render: (value) => value?.nome || '-' },
+    { key: 'cidade', label: 'Cidade' },
+    { key: 'uf', label: 'UF' }
   ];
 
   useEffect(() => {
@@ -92,20 +89,17 @@ export default function Pacientes() {
     const termoBusca = filtro.toLowerCase();
     const filtrados = pacientes.filter(paciente => 
       paciente.nomeCompleto.toLowerCase().includes(termoBusca) ||
-      (paciente.cpf && paciente.cpf.replace(/\D/g, '').includes(termoBusca)) ||
-      (paciente.numeroSUS && paciente.numeroSUS.toLowerCase().includes(termoBusca))
+      (paciente.CPF && paciente.CPF.replace(/\D/g, '').includes(termoBusca)) ||
+      (paciente.numSUS && paciente.numSUS.toLowerCase().includes(termoBusca))
     );
     setPacientesFiltrados(filtrados);
   };
 
-  const handleSort = (key: string) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
+  const handleSort = (key: keyof Paciente) => {
+    const direction: 'asc' | 'desc' = sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc';
     setSortConfig({ key, direction });
 
-    const sortedData = [...pacientesFiltrados].sort((a: any, b: any) => {
+    const sortedData = [...pacientesFiltrados].sort((a, b) => {
       if (key === 'sexo') {
         const aValue = a[key]?.nome || '';
         const bValue = b[key]?.nome || '';
@@ -140,7 +134,7 @@ export default function Pacientes() {
   };
 
   const handleNew = () => {
-    router.push('/paciente/criar');
+    router.push('/paciente/criar/novo');
   };
 
   return (
@@ -176,8 +170,10 @@ export default function Pacientes() {
           <Table
             columns={columns}
             data={pacientesFiltrados}
-            sortConfig={sortConfig}
+            isLoading={loading}
             onSort={handleSort}
+            sortKey={sortConfig.key}
+            sortDirection={sortConfig.direction}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />

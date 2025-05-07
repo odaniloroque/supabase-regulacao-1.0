@@ -30,7 +30,22 @@ api.interceptors.response.use(
 
 export const pacienteService = {
   listar: () => api.get('/paciente'),
-  buscar: (id: number) => api.get(`/paciente/${id}`),
+  buscar: async (id: number) => {
+    try {
+      console.log('Chamando API para buscar paciente:', id);
+      const response = await api.get(`/paciente/${id}`);
+      console.log('Resposta da API (buscar paciente):', response);
+      return response;
+    } catch (error: any) {
+      console.error('Erro na chamada da API (buscar paciente):', {
+        id,
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      throw error;
+    }
+  },
   criar: (data: any) => api.post('/paciente', data),
   atualizar: (id: number, data: any) => api.put(`/paciente/${id}`, data),
   excluir: (id: number) => api.delete(`/paciente/${id}`),

@@ -1,130 +1,119 @@
 const { PrismaClient } = require('@prisma/client');
+const BaseController = require('./BaseController');
+
 const prisma = new PrismaClient();
 
-// Listar todos os sexos
-exports.listarSexos = async (req, res) => {
-  try {
-    const sexos = await prisma.sexo.findMany();
-    res.json(sexos);
-  } catch (error) {
-    console.error('Erro ao listar sexos:', error);
-    res.status(500).json({ error: 'Erro ao listar sexos' });
+class SexoController extends BaseController {
+  constructor() {
+    super();
+    this.listar = this.listar.bind(this);
+    this.buscar = this.buscar.bind(this);
+    this.criar = this.criar.bind(this);
+    this.atualizar = this.atualizar.bind(this);
+    this.excluir = this.excluir.bind(this);
   }
-};
 
-// Buscar sexo por ID
-exports.buscarSexo = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const sexo = await prisma.sexo.findUnique({
-      where: { idSexo: parseInt(id) },
-    });
-
-    if (!sexo) {
-      return res.status(404).json({ error: 'Sexo não encontrado' });
+  async listar(req, res) {
+    try {
+      console.log('📋 Listando sexos');
+      const sexos = await prisma.sexo.findMany({
+        orderBy: {
+          nome: 'asc'
+        }
+      });
+      return this.sendResponse(res, sexos);
+    } catch (error) {
+      return this.handleError(error, res);
     }
-
-    res.json(sexo);
-  } catch (error) {
-    console.error('Erro ao buscar sexo:', error);
-    res.status(500).json({ error: 'Erro ao buscar sexo' });
   }
-};
 
-// Criar novo sexo
-exports.criarSexo = async (req, res) => {
-  try {
-    const { nome } = req.body;
+  async buscar(req, res) {
+    try {
+      const { id } = req.params;
+      console.log('🔍 Buscando sexo:', { id });
 
-    // Verificar se o nome já existe
-    const sexoExistente = await prisma.sexo.findUnique({
-      where: { nome },
-    });
-
-    if (sexoExistente) {
-      return res.status(400).json({ error: 'Sexo já cadastrado' });
-    }
-
-    const sexo = await prisma.sexo.create({
-      data: { nome },
-    });
-
-    res.status(201).json(sexo);
-  } catch (error) {
-    console.error('Erro ao criar sexo:', error);
-    res.status(500).json({ error: 'Erro ao criar sexo' });
-  }
-};
-
-// Atualizar sexo
-exports.atualizarSexo = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { nome } = req.body;
-
-    // Verificar se o sexo existe
-    const sexoExistente = await prisma.sexo.findUnique({
-      where: { idSexo: parseInt(id) },
-    });
-
-    if (!sexoExistente) {
-      return res.status(404).json({ error: 'Sexo não encontrado' });
-    }
-
-    // Verificar se o novo nome já existe em outro sexo
-    if (nome !== sexoExistente.nome) {
-      const nomeExistente = await prisma.sexo.findUnique({
-        where: { nome },
+      const sexo = await prisma.sexo.findUnique({
+        where: { id: Number(id) }
       });
 
-      if (nomeExistente) {
-        return res.status(400).json({ error: 'Nome já cadastrado para outro sexo' });
+      if (!sexo) {
+        return this.sendResponse(res, { error: 'Sexo não encontrado' }, 404);
       }
+
+      return this.sendResponse(res, sexo);
+    } catch (error) {
+      return this.handleError(error, res);
     }
-
-    const sexo = await prisma.sexo.update({
-      where: { idSexo: parseInt(id) },
-      data: { nome },
-    });
-
-    res.json(sexo);
-  } catch (error) {
-    console.error('Erro ao atualizar sexo:', error);
-    res.status(500).json({ error: 'Erro ao atualizar sexo' });
   }
-};
 
-// Excluir sexo
-exports.excluirSexo = async (req, res) => {
-  try {
-    const { id } = req.params;
+  async criar(req, res) {
+    try {
+      console.log('➕ Criando novo sexo:', req.body);
 
-    // Verificar se o sexo existe
-    const sexoExistente = await prisma.sexo.findUnique({
-      where: { idSexo: parseInt(id) },
-      include: {
-        pacientes: true,
-      },
-    });
+      // Validação dos campos obrigatórios
+      this.validateRequiredFields(req.body, ['nome']);
 
-    if (!sexoExistente) {
-      return res.status(404).json({ error: 'Sexo não encontrado' });
-    }
-
-    // Verificar se existem pacientes associados
-    if (sexoExistente.pacientes.length > 0) {
-      return res.status(400).json({ 
-        error: 'Não é possível excluir o sexo pois existem pacientes associados' 
+      const sexo = await prisma.sexo.create({
+        data: req.body
       });
+
+      console.log('✅ Sexo criado:', { id: sexo.id });
+      return this.sendResponse(res, sexo, 201);
+    } catch (error) {
+      return this.handleError(error, res);
     }
-
-    await prisma.sexo.delete({
-      where: { idSexo: parseInt(id) },
-    });
-
-    res.status(204).send();
-  } catch (error) {
-    console.error('Erro ao excluir sexo:', error);
-    res.status(500).json({ error: 'Erro ao excluir sexo' });
   }
-}; 
+
+  async atualizar(req, res) {
+    try {
+      const { id } = req.params;
+      console.log('🔄 Atualizando sexo:', { id });
+
+      // Verifica se o sexo existe
+      const sexoExistente = await prisma.sexo.findUnique({
+        where: { id: Number(id) }
+      });
+
+      if (!sexoExistente) {
+        return this.sendResponse(res, { error: 'Sexo não encontrado' }, 404);
+      }
+
+      const sexo = await prisma.sexo.update({
+        where: { id: Number(id) },
+        data: req.body
+      });
+
+      console.log('✅ Sexo atualizado:', { id });
+      return this.sendResponse(res, sexo);
+    } catch (error) {
+      return this.handleError(error, res);
+    }
+  }
+
+  async excluir(req, res) {
+    try {
+      const { id } = req.params;
+      console.log('🗑️ Excluindo sexo:', { id });
+
+      // Verifica se o sexo existe
+      const sexoExistente = await prisma.sexo.findUnique({
+        where: { id: Number(id) }
+      });
+
+      if (!sexoExistente) {
+        return this.sendResponse(res, { error: 'Sexo não encontrado' }, 404);
+      }
+
+      await prisma.sexo.delete({
+        where: { id: Number(id) }
+      });
+
+      console.log('✅ Sexo excluído:', { id });
+      return this.sendResponse(res, { message: 'Sexo excluído com sucesso' });
+    } catch (error) {
+      return this.handleError(error, res);
+    }
+  }
+}
+
+module.exports = new SexoController(); 

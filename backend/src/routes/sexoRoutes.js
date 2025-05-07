@@ -7,18 +7,18 @@ const authMiddleware = require('../middleware/authMiddleware');
 router.use(authMiddleware);
 
 // Listar todos os sexos
-router.get('/', sexoController.listarSexos);
+router.get('/', sexoController.listar);
 
 // Buscar sexo por ID
-router.get('/:id', sexoController.buscarSexo);
+router.get('/:id', sexoController.buscar);
 
 // Criar novo sexo
-router.post('/', sexoController.criarSexo);
+router.post('/', sexoController.criar);
 
 // Atualizar sexo
-router.put('/:id', sexoController.atualizarSexo);
+router.put('/:id', sexoController.atualizar);
 
 // Excluir sexo
-router.delete('/:id', sexoController.excluirSexo);
+router.delete('/:id', sexoController.excluir);
 
 module.exports = router; 

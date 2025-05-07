@@ -1,45 +1,87 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { Layout } from '../../components/Layout';
-import { Table } from '../../components/Table';
+import Table from '../../components/Table';
 import { usuarioService } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { FaPlus, FaSearch } from 'react-icons/fa';
+
+interface Usuario {
+  idUsuario: number;
+  nome: string;
+  email: string;
+  tipo: string;
+}
+
+interface Column<T> {
+  key: keyof T;
+  label: string;
+  render?: (value: any) => string;
+}
 
 export default function Usuarios() {
   const router = useRouter();
-  const [usuarios, setUsuarios] = useState([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [usuariosFiltrados, setUsuariosFiltrados] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortConfig, setSortConfig] = useState({ key: 'nome', direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Usuario; direction: 'asc' | 'desc' }>({ 
+    key: 'nome', 
+    direction: 'asc' 
+  });
+  const [filtro, setFiltro] = useState('');
+
+  const columns: Column<Usuario>[] = [
+    { key: 'nome', label: 'Nome' },
+    { key: 'email', label: 'E-mail' },
+    { key: 'tipo', label: 'Tipo', render: (value) => value === 'admin' ? 'Administrador' : 'Usuário' }
+  ];
 
   useEffect(() => {
     carregarUsuarios();
   }, []);
 
+  useEffect(() => {
+    filtrarUsuarios();
+  }, [filtro, usuarios]);
+
   const carregarUsuarios = async () => {
     try {
       const response = await usuarioService.listar();
       setUsuarios(response.data);
+      setUsuariosFiltrados(response.data);
     } catch (error) {
+      console.error('Erro ao carregar usuários:', error);
       toast.error('Erro ao carregar usuários');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSort = (key: string) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
+  const filtrarUsuarios = () => {
+    if (!filtro.trim()) {
+      setUsuariosFiltrados(usuarios);
+      return;
     }
+
+    const termoBusca = filtro.toLowerCase();
+    const filtrados = usuarios.filter(usuario => 
+      usuario.nome.toLowerCase().includes(termoBusca) ||
+      usuario.email.toLowerCase().includes(termoBusca)
+    );
+    setUsuariosFiltrados(filtrados);
+  };
+
+  const handleSort = (key: keyof Usuario) => {
+    const direction: 'asc' | 'desc' = sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc';
     setSortConfig({ key, direction });
 
-    const sortedData = [...usuarios].sort((a: any, b: any) => {
+    const sortedData = [...usuariosFiltrados].sort((a, b) => {
       if (a[key] < b[key]) return direction === 'asc' ? -1 : 1;
       if (a[key] > b[key]) return direction === 'asc' ? 1 : -1;
       return 0;
     });
 
-    setUsuarios(sortedData);
+    setUsuariosFiltrados(sortedData);
   };
 
   const handleEdit = (id: number) => {
@@ -53,20 +95,15 @@ export default function Usuarios() {
         toast.success('Usuário excluído com sucesso');
         carregarUsuarios();
       } catch (error: any) {
+        console.error('Erro ao excluir usuário:', error);
         toast.error(error.response?.data?.error || 'Erro ao excluir usuário');
       }
     }
   };
 
-  const handleAdd = () => {
+  const handleNew = () => {
     router.push('/usuario/criar');
   };
-
-  const columns = [
-    { key: 'nome', label: 'Nome', sortable: true },
-    { key: 'email', label: 'E-mail', sortable: true },
-    { key: 'tipo', label: 'Tipo', sortable: true },
-  ];
 
   return (
     <Layout>
@@ -74,11 +111,25 @@ export default function Usuarios() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
           <button
-            onClick={handleAdd}
-            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
+            onClick={handleNew}
+            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark flex items-center"
           >
+            <FaPlus className="mr-2" />
             Novo Usuário
           </button>
+        </div>
+
+        <div className="mb-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Buscar por nome ou e-mail..."
+              value={filtro}
+              onChange={(e) => setFiltro(e.target.value)}
+              className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+            <FaSearch className="absolute left-3 top-3 text-gray-400" />
+          </div>
         </div>
 
         {loading ? (
@@ -86,11 +137,14 @@ export default function Usuarios() {
         ) : (
           <Table
             columns={columns}
-            data={usuarios}
-            sortConfig={sortConfig}
+            data={usuariosFiltrados}
+            isLoading={loading}
             onSort={handleSort}
+            sortKey={sortConfig.key}
+            sortDirection={sortConfig.direction}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            idField="idUsuario"
           />
         )}
       </div>

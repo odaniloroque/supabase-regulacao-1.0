@@ -7,18 +7,18 @@ const authMiddleware = require('../middleware/authMiddleware');
 router.use(authMiddleware);
 
 // Listar todos os pacientes
-router.get('/', pacienteController.listarPacientes);
+router.get('/', pacienteController.listar);
 
 // Buscar paciente por ID
-router.get('/:id', pacienteController.buscarPaciente);
+router.get('/:id', pacienteController.buscar);
 
 // Criar novo paciente
-router.post('/', pacienteController.criarPaciente);
+router.post('/', pacienteController.criar);
 
 // Atualizar paciente
-router.put('/:id', pacienteController.atualizarPaciente);
+router.put('/:id', pacienteController.atualizar);
 
 // Excluir paciente
-router.delete('/:id', pacienteController.excluirPaciente);
+router.delete('/:id', pacienteController.excluir);
 
 module.exports = router; 

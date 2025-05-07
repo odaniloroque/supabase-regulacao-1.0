@@ -5,4 +5,6 @@ const authController = require('../controllers/authController');
 // Rota de login
 router.post('/login', authController.login);
 
+router.post('/govbr', authController.loginWithGovBr);
+
 module.exports = router; 

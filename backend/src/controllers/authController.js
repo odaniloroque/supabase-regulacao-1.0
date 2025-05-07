@@ -1,100 +1,159 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
+const BaseController = require('./BaseController');
 require('dotenv').config();
 
 const prisma = new PrismaClient();
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const GOVBR_CLIENT_ID = process.env.GOVBR_CLIENT_ID;
+const GOVBR_CLIENT_SECRET = process.env.GOVBR_CLIENT_SECRET;
+const GOVBR_REDIRECT_URI = process.env.GOVBR_REDIRECT_URI || 'http://localhost:3000/login';
 
-const authController = {
+class AuthController extends BaseController {
+  constructor() {
+    super();
+    this.login = this.login.bind(this);
+    this.loginWithGovBr = this.loginWithGovBr.bind(this);
+  }
+
   async login(req, res) {
     try {
-      console.log('Recebendo requisição de login:', {
-        method: req.method,
-        body: req.body,
-        headers: req.headers
-      });
+      console.log('🔐 Tentativa de login:', { email: req.body.email });
 
-      const { email, senha } = req.body;
-      
-      if (!email || !senha) {
-        console.log('Dados de login incompletos:', { email: !!email, senha: !!senha });
-        return res.status(400).json({ error: 'Email e senha são obrigatórios' });
-      }
+      // Validação dos campos obrigatórios
+      this.validateRequiredFields(req.body, ['email', 'senha']);
 
+      // Validação do JWT_SECRET
       if (!process.env.JWT_SECRET) {
-        console.error('JWT_SECRET não está definido no .env');
-        return res.status(500).json({ error: 'Configuração do servidor incompleta' });
+        throw new Error('JWT_SECRET não está definido no .env');
       }
 
-      console.log('Buscando usuário no banco de dados:', { email });
+      // Busca do usuário
       const usuario = await prisma.usuario.findUnique({
-        where: { email }
+        where: { email: req.body.email }
       });
 
       if (!usuario) {
-        console.log('Usuário não encontrado:', email);
-        return res.status(401).json({ error: 'Usuário não encontrado' });
+        console.log('❌ Usuário não encontrado:', req.body.email);
+        return this.sendResponse(res, { error: 'Usuário não encontrado' }, 401);
       }
 
-      console.log('Usuário encontrado:', { 
+      console.log('✅ Usuário encontrado:', { 
         id: usuario.id, 
-        nome: usuario.nome,
-        email: usuario.email 
+        nome: usuario.nome 
       });
 
-      console.log('Verificando senha...');
-      const senhaValida = await bcrypt.compare(senha, usuario.senha);
-      console.log('Resultado da verificação da senha:', senhaValida);
-
+      // Validação da senha
+      const senhaValida = await bcrypt.compare(req.body.senha, usuario.senha);
       if (!senhaValida) {
-        console.log('Senha inválida para usuário:', email);
-        return res.status(401).json({ error: 'Senha inválida' });
+        console.log('❌ Senha inválida para usuário:', req.body.email);
+        return this.sendResponse(res, { error: 'Senha inválida' }, 401);
       }
 
-      try {
-        console.log('Gerando token JWT...');
-        const token = jwt.sign(
-          { 
-            id: usuario.id,
-            nome: usuario.nome,
-            email: usuario.email
-          }, 
-          process.env.JWT_SECRET, 
-          { expiresIn: '1d' }
-        );
-
-        const response = {
-          usuario: {
-            id: usuario.id,
-            nome: usuario.nome,
-            email: usuario.email
-          },
-          token
-        };
-
-        console.log('Login bem sucedido:', { 
-          id: usuario.id, 
+      // Geração do token
+      const token = jwt.sign(
+        { 
+          id: usuario.id,
           nome: usuario.nome,
-          tokenLength: token.length 
-        });
-        
-        return res.json(response);
-      } catch (jwtError) {
-        console.error('Erro ao gerar token JWT:', jwtError);
-        return res.status(500).json({ error: 'Erro ao gerar token de autenticação' });
-      }
+          email: usuario.email
+        }, 
+        process.env.JWT_SECRET, 
+        { expiresIn: '1d' }
+      );
+
+      const response = {
+        usuario: {
+          id: usuario.id,
+          nome: usuario.nome,
+          email: usuario.email
+        },
+        token
+      };
+
+      console.log('✅ Login bem sucedido:', { 
+        id: usuario.id, 
+        nome: usuario.nome 
+      });
+
+      return this.sendResponse(res, response);
     } catch (error) {
-      console.error('Erro detalhado no login:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      return res.status(500).json({ 
-        error: 'Erro interno do servidor',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      return this.handleError(error, res);
     }
   }
-};
 
-module.exports = authController; 
+  async loginWithGovBr(req, res) {
+    try {
+      const { code } = req.body;
+
+      if (!code) {
+        return this.sendResponse(res, { error: 'Código de autorização não fornecido' }, 400);
+      }
+
+      // Trocar o código por um token de acesso
+      const tokenResponse = await axios.post('https://sso.acesso.gov.br/token', {
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: GOVBR_REDIRECT_URI,
+        client_id: GOVBR_CLIENT_ID,
+        client_secret: GOVBR_CLIENT_SECRET
+      });
+
+      const { access_token } = tokenResponse.data;
+
+      // Obter informações do usuário
+      const userResponse = await axios.get('https://sso.acesso.gov.br/userinfo', {
+        headers: {
+          Authorization: `Bearer ${access_token}`
+        }
+      });
+
+      const { sub: govBrId, email, name } = userResponse.data;
+
+      // Verificar se o usuário já existe
+      let user = await prisma.usuario.findFirst({
+        where: {
+          OR: [
+            { email },
+            { govBrId }
+          ]
+        }
+      });
+
+      // Se não existir, criar um novo usuário
+      if (!user) {
+        user = await prisma.usuario.create({
+          data: {
+            nome: name,
+            email,
+            govBrId,
+            tipo: 'usuario' // Tipo padrão para novos usuários
+          }
+        });
+      }
+
+      // Gerar token JWT
+      const token = jwt.sign(
+        { id: user.idUsuario, email: user.email, tipo: user.tipo },
+        JWT_SECRET,
+        { expiresIn: '1d' }
+      );
+
+      return this.sendResponse(res, {
+        token,
+        user: {
+          idUsuario: user.idUsuario,
+          nome: user.nome,
+          email: user.email,
+          tipo: user.tipo
+        }
+      });
+    } catch (error) {
+      console.error('Erro no login com GOV.BR:', error);
+      return this.handleError(error, res);
+    }
+  }
+}
+
+module.exports = new AuthController(); 

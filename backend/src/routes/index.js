@@ -5,7 +5,7 @@ const pacienteRoutes = require('./pacienteRoutes');
 const sexoRoutes = require('./sexoRoutes');
 const usuarioRoutes = require('./usuarioRoutes');
 
-// Rotas de autenticação
+// Rotas de autenticação (públicas)
 router.use('/auth', authRoutes);
 
 // Rotas protegidas

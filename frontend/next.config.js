@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  images: {
+    domains: ['sso.acesso.gov.br'],
+  },
   webpack: (config, { isServer }) => {
     // Otimizações para melhorar o Fast Refresh
     config.optimization.moduleIds = 'deterministic';
