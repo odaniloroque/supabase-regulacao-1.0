@@ -21,8 +21,13 @@ model Paciente {
   numSUS         String    @unique
   sexo           Sexo      @relation(fields: [idSexo], references: [idSexo])
   idSexo         Int
-  endereco       Endereco  @relation(fields: [idEndereco], references: [idEndereco])
-  idEndereco     Int
+  CEP            String
+  endereco       String
+  numero         String
+  complemento    String?
+  bairro         String
+  cidade         String
+  uf             String
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }
@@ -33,18 +38,6 @@ model Sexo {
   pacientes Paciente[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
-}
-
-model Endereco {
-  idEndereco Int        @id @default(autoincrement())
-  CEP        String
-  endereco   String
-  num        String
-  bairro     String
-  uf         String
-  pacientes  Paciente[]
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
 }
 
 model Usuario {

@@ -1,17 +1,22 @@
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { 
-  FaUserInjured, 
-  FaVenusMars, 
-  FaMapMarkerAlt, 
-  FaUsers,
-  FaSignOutAlt,
-  FaBars,
-  FaCog
-} from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
-import { useState, useEffect } from 'react';
 import { useDeviceType } from '../hooks/useDeviceType';
+import {
+  FaHome,
+  FaUser,
+  FaUsers,
+  FaVenusMars,
+  FaMapMarkerAlt,
+  FaUserCog,
+  FaSignOutAlt,
+  FaChevronLeft,
+  FaChevronRight,
+  FaTools,
+  FaCaretDown,
+  FaCaretRight,
+} from 'react-icons/fa';
 
 export function Sidebar() {
   const router = useRouter();
@@ -20,140 +25,128 @@ export function Sidebar() {
   const [isExpanded, setIsExpanded] = useState(deviceType !== 'mobile');
   const [isUtilExpanded, setIsUtilExpanded] = useState(false);
 
-  // Atualiza o estado quando o tipo de dispositivo muda
   useEffect(() => {
     setIsExpanded(deviceType !== 'mobile');
   }, [deviceType]);
 
-  const menuItems = [
-    {
-      title: 'Pacientes',
-      icon: FaUserInjured,
-      href: '/pacientes',
-    },
-    {
-      title: 'Util',
-      icon: FaCog,
-      subItems: [
-        {
-          title: 'Sexos',
-          icon: FaVenusMars,
-          href: '/sexos',
-        },
-        {
-          title: 'Endereços',
-          icon: FaMapMarkerAlt,
-          href: '/enderecos',
-        },
-        {
-          title: 'Usuários',
-          icon: FaUsers,
-          href: '/usuarios',
-        },
-      ],
-    },
+  const toggleSidebar = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  const toggleUtilMenu = () => {
+    setIsUtilExpanded(!isUtilExpanded);
+  };
+
+  const mainMenuItems = [
+    { href: '/dashboard', icon: FaHome, label: 'Dashboard' },
+    { href: '/paciente', icon: FaUsers, label: 'Pacientes' },
   ];
 
-  return (
-    <div className={`bg-primary min-h-screen transition-all duration-300 ${
-      isExpanded ? 'w-64' : 'w-20'
-    } p-4 relative`}>
-      {/* Botão de toggle - visível apenas em mobile */}
-      {deviceType === 'mobile' && (
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="absolute -right-3 top-4 bg-accent text-white p-1 rounded-full hover:bg-accent/80 transition-colors"
-        >
-          <FaBars size={16} />
-        </button>
-      )}
+  const utilMenuItems = [
+    { href: '/sexo', icon: FaVenusMars, label: 'Sexos' },
+    { href: '/endereco', icon: FaMapMarkerAlt, label: 'Endereços' },
+    { href: '/usuario', icon: FaUserCog, label: 'Usuários' },
+  ];
 
-      {/* Título */}
-      <div className={`text-white font-bold mb-8 transition-all duration-300 ${
-        isExpanded ? 'text-2xl' : 'text-lg text-center'
-      }`}>
-        {isExpanded ? 'Sistema de Regulação' : 'SR'}
+  const isUtilActive = utilMenuItems.some(item => router.pathname.startsWith(item.href));
+
+  return (
+    <div
+      className={`bg-gray-800 text-white transition-all duration-300 ${
+        isExpanded ? 'w-64' : 'w-20'
+      }`}
+    >
+      <div className="p-4 flex items-center justify-between">
+        {isExpanded ? (
+          <h1 className="text-xl font-bold">Regulação</h1>
+        ) : (
+          <h1 className="text-xl font-bold">R</h1>
+        )}
+        <button
+          onClick={toggleSidebar}
+          className="p-2 rounded-lg hover:bg-gray-700 focus:outline-none"
+        >
+          {isExpanded ? <FaChevronLeft /> : <FaChevronRight />}
+        </button>
       </div>
-      
-      <nav>
-        {menuItems.map((item) => {
+
+      <nav className="mt-8">
+        {mainMenuItems.map((item) => {
           const Icon = item.icon;
-          
-          if (item.subItems) {
-            return (
-              <div key={item.title} className="mb-2">
-                <button
-                  onClick={() => setIsUtilExpanded(!isUtilExpanded)}
-                  className={`flex items-center text-white p-3 rounded-lg w-full hover:bg-accent transition-colors ${
-                    !isExpanded && 'justify-center'
-                  }`}
-                  title={!isExpanded ? item.title : undefined}
-                >
-                  <Icon className={isExpanded ? 'mr-3' : 'mx-auto'} size={isExpanded ? 20 : 24} />
-                  {isExpanded && (
-                    <>
-                      <span className="flex-1 text-left">{item.title}</span>
-                      <svg
-                        className={`w-4 h-4 transition-transform ${isUtilExpanded ? 'rotate-180' : ''}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </>
-                  )}
-                </button>
-                
-                {isUtilExpanded && isExpanded && (
-                  <div className="ml-4 mt-2 space-y-1">
-                    {item.subItems.map((subItem) => {
-                      const SubIcon = subItem.icon;
-                      return (
-                        <Link
-                          key={subItem.href}
-                          href={subItem.href}
-                          className={`flex items-center text-white p-2 rounded-lg hover:bg-accent transition-colors ${
-                            router.pathname.startsWith(subItem.href) ? 'bg-accent' : ''
-                          }`}
-                        >
-                          <SubIcon className="mr-3" size={18} />
-                          <span>{subItem.title}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          }
+          const isActive = router.pathname.startsWith(item.href);
 
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center text-white p-3 rounded-lg mb-2 hover:bg-accent transition-colors ${
-                router.pathname.startsWith(item.href) ? 'bg-accent' : ''
+              className={`flex items-center px-4 py-3 transition-colors duration-200 ${
+                isActive
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               }`}
-              title={!isExpanded ? item.title : undefined}
             >
-              <Icon className={isExpanded ? 'mr-3' : 'mx-auto'} size={isExpanded ? 20 : 24} />
-              {isExpanded && <span>{item.title}</span>}
+              <Icon className="text-xl" />
+              {isExpanded && <span className="ml-4">{item.label}</span>}
             </Link>
           );
         })}
 
+        {/* Menu Util */}
+        <div className="mt-2">
+          <button
+            onClick={toggleUtilMenu}
+            className={`flex items-center w-full px-4 py-3 transition-colors duration-200 ${
+              isUtilActive
+                ? 'bg-gray-900 text-white'
+                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+            }`}
+          >
+            <FaTools className="text-xl" />
+            {isExpanded && (
+              <>
+                <span className="ml-4">Util</span>
+                <div className="ml-auto">
+                  {isUtilExpanded ? <FaCaretDown /> : <FaCaretRight />}
+                </div>
+              </>
+            )}
+          </button>
+
+          {isExpanded && isUtilExpanded && (
+            <div className="ml-8 mt-1">
+              {utilMenuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = router.pathname.startsWith(item.href);
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center px-4 py-2 transition-colors duration-200 ${
+                      isActive
+                        ? 'bg-gray-900 text-white'
+                        : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="text-lg" />
+                    <span className="ml-3">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </nav>
+
+      <div className="mt-auto p-4 border-t border-gray-700">
         <button
           onClick={signOut}
-          className={`flex items-center text-white p-3 rounded-lg mb-2 hover:bg-accent transition-colors w-full ${
-            !isExpanded && 'justify-center'
-          }`}
-          title={!isExpanded ? 'Sair' : undefined}
+          className="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 rounded-lg"
         >
-          <FaSignOutAlt className={isExpanded ? 'mr-3' : 'mx-auto'} size={isExpanded ? 20 : 24} />
-          {isExpanded && <span>Sair</span>}
+          <FaSignOutAlt className="text-xl" />
+          {isExpanded && <span className="ml-4">Sair</span>}
         </button>
-      </nav>
+      </div>
     </div>
   );
 } 

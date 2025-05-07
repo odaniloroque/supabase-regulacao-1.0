@@ -24,7 +24,9 @@ export function useDeviceType() {
     window.addEventListener('resize', checkDeviceType);
 
     // Limpa o listener quando o componente é desmontado
-    return () => window.removeEventListener('resize', checkDeviceType);
+    return () => {
+      window.removeEventListener('resize', checkDeviceType);
+    };
   }, []);
 
   return deviceType;
