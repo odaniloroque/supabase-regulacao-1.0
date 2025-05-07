@@ -44,10 +44,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log('Tentando login com:', { email });
+      
       const response = await axios.post('http://localhost:3001/api/auth/login', {
         email,
-        password,
+        senha: password,
       });
+
+      console.log('Resposta do servidor:', response.data);
 
       const { token, usuario } = response.data;
 
@@ -56,8 +60,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       router.push('/dashboard');
     } catch (error) {
+      console.error('Erro no login:', error);
       if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || 'Erro ao fazer login');
+        const errorMessage = error.response?.data?.error || 'Erro ao fazer login';
+        throw new Error(errorMessage);
       }
       throw new Error('Erro ao fazer login');
     }
