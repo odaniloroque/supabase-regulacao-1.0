@@ -46,7 +46,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const response = await axios.post('http://localhost:3001/api/auth/login', {
         email,
-        senha: password,
+        password,
       });
 
       const { token, usuario } = response.data;
@@ -56,7 +56,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       router.push('/dashboard');
     } catch (error) {
-      throw new Error('Credenciais inválidas');
+      if (axios.isAxiosError(error)) {
+        throw new Error(error.response?.data?.message || 'Erro ao fazer login');
+      }
+      throw new Error('Erro ao fazer login');
     }
   };
 
